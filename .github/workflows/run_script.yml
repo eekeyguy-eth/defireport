@@ -1,4 +1,4 @@
-name: Run Python Scripts Every 6 hours
+name: Run Python Scripts Every 3 hours
 on:
   schedule:
     - cron: '0 */3 * * *'  # Runs every 3 hours

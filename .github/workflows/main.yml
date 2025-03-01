@@ -34,9 +34,9 @@ jobs:
           DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}  # Use GitHub Secrets for API keys
 
       # Step 5: Run the market_cap.py script
-      - name: Run market_cap.py
+      - name: Run marketcapdata.py
         run: |
-          python market_cap.py
+          python marketcapdata.py
         env:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}

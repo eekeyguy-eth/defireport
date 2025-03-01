@@ -20,26 +20,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Step 3: Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgbm-dev wget unzip xvfb
-
-      # Step 4: Install Chrome and Chromedriver
-      - name: Install Chrome and Chromedriver
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: 'latest'
-
-      # Step 5: Install Python dependencies
+      # Step 3: Install Python dependencies
       - name: Install dependencies
         run: |
-          pip install selenium requests webdriver-manager
+          pip install requests
 
-      # Step 6: Run the scraper script with Xvfb
-      - name: Run stablecoins.py with Xvfb
+      # Step 4: Run the scraper script
+      - name: Run stablecoins.py
         run: |
-          xvfb-run -a python stablecoins.py
+          python stablecoins.py
         env:
-          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}  # Use GitHub Secrets for API key
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}  # Use GitHub Secrets for API keys

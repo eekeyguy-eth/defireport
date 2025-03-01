@@ -1,92 +1,68 @@
 import requests
 import json
 import csv
+import time
 from io import StringIO
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
-def fetch_stablecoin_data():
-    url = "https://stablecoins.llama.fi/stablecoins?includePrices=true"
-    response = requests.get(url)
-    
-    if response.status_code != 200:
-        print("Failed to fetch data")
-        return []
-    
-    data = response.json()
-    pegged_assets = data.get("peggedAssets", [])
-    
+# Function to fetch stablecoin market cap data
+def fetch_market_data():
+    driver = webdriver.Chrome()
     extracted_data = []
-    
-    for asset in pegged_assets:
-        symbol = asset.get("symbol", "N/A")
-        circulating = asset.get("circulating", {}).get("peggedUSD", 0)
-        
-        circulating_prev_month = asset.get("circulatingPrevMonth", 0)
-        if isinstance(circulating_prev_month, dict):
-            circulating_prev_month = circulating_prev_month.get("peggedUSD", 0)
-        
-        peg_mechanism = asset.get("pegMechanism", "N/A")
-        chains = asset.get("chainCirculating", {})
-        number_of_chains = len(chains)
-        
-        extracted_data.append({
-            "symbol": symbol,
-            "circulating_peggedUSD": circulating,
-            "circulatingPrevMonth_peggedUSD": circulating_prev_month,
-            "number_of_chains": number_of_chains,
-            "pegMechanism": peg_mechanism,
-        })
-    
+
+    try:
+        driver.get("https://www.coingecko.com/en/categories/stablecoins")
+        time.sleep(5)  # Allow time for the page to load
+
+        # Get total market cap (Updated XPath)
+        try:
+            total_marketcap = driver.find_element(By.XPATH, '/html/body/div[3]/main/div/div[3]/div/div/div[1]/div/div[1]/span').text
+            extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": total_marketcap.replace("$", "").replace(",", "").strip()})
+        except:
+            extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": "N/A"})
+
+        # Get top 50 stablecoins
+        for i in range(1, 51):
+            try:
+                symbol = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div').text
+                marketcap = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span').text.replace("$", "").replace(",", "").strip()
+                extracted_data.append({"symbol": symbol, "marketcap_usd": marketcap})
+            except:
+                continue
+    finally:
+        driver.quit()
+
     return extracted_data
 
+# Convert to CSV
 def convert_to_csv(data):
     csv_file = StringIO()
-    fieldnames = ["symbol", "circulating_peggedUSD", "circulatingPrevMonth_peggedUSD", "number_of_chains", "pegMechanism"]
-    
-    csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-    csv_writer.writeheader()
-    csv_writer.writerows(data)
-    
-    csv_data = csv_file.getvalue()
-    csv_file.close()
-    return csv_data
+    writer = csv.DictWriter(csv_file, fieldnames=["symbol", "marketcap_usd"])
+    writer.writeheader()
+    writer.writerows(data)
+    return csv_file.getvalue()
 
+# Upload to Dune
 def upload_to_dune(csv_data):
-    dune_upload_url = "https://api.dune.com/api/v1/table/upload/csv"
-    
-    payload = json.dumps({
-        "data": csv_data,
-        "description": "Stablecoin Market Data",
-        "table_name": "stablecoins_market_data",  # Your desired table name in Dune
-        "is_private": False
-    })
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'X-DUNE-API-KEY': 'BbxP6Oq2RHQS8nJurQlMfXWsovZNIrro'  # Replace with your Dune API key
-    }
-    
-    try:
-        response = requests.post(dune_upload_url, headers=headers, data=payload)
-        response.raise_for_status()
-        print("Successfully uploaded to Dune!")
-        print(response.json())
-    except requests.exceptions.RequestException as e:
-        print(f"Error uploading to Dune: {e}")
-        print(f"Response: {response.text if 'response' in locals() else 'No response'}")
+    response = requests.post(
+        "https://api.dune.com/api/v1/table/upload/csv",
+        headers={'Content-Type': 'application/json', 'X-DUNE-API-KEY': 'BbxP6Oq2RHQS8nJurQlMfXWsovZNIrro'},
+        data=json.dumps({
+            "data": csv_data,
+            "description": "Stablecoin Market Capitalization (Total + Top 50)",
+            "table_name": "stablecoins_marketcap_data",
+            "is_private": False
+        })
+    )
+    print("Upload Response:", response.text)
 
+# Main function
 def main():
-    stablecoins_data = fetch_stablecoin_data()
-    
-    if stablecoins_data:
-        csv_data = convert_to_csv(stablecoins_data)
-        
-        with open('stablecoins_market_data.csv', 'w') as f:
-            f.write(csv_data)
-        print("Data saved locally to 'stablecoins_market_data.csv'")
-        
+    data = fetch_market_data()
+    if data:
+        csv_data = convert_to_csv(data)
         upload_to_dune(csv_data)
-    else:
-        print("Failed to fetch data")
 
 if __name__ == "__main__":
     main()

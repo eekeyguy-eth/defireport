@@ -5,21 +5,37 @@ import time
 from io import StringIO
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Function to fetch stablecoin market cap data
 def fetch_market_data():
-    driver = webdriver.Chrome()
+    # Configure Chrome options for headless mode
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")  # Use new headless mode
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    # Initialize Chrome WebDriver
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
+    )
     extracted_data = []
 
     try:
         driver.get("https://www.coingecko.com/en/categories/stablecoins")
-        time.sleep(5)  # Allow time for the page to load
+        time.sleep(10)  # Allow more time for the page to load
 
         # Get total market cap (Updated XPath)
         try:
             total_marketcap = driver.find_element(By.XPATH, '/html/body/div[3]/main/div/div[3]/div/div/div[1]/div/div[1]/span').text
             extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": total_marketcap.replace("$", "").replace(",", "").strip()})
-        except:
+        except Exception as e:
+            print(f"Error fetching total market cap: {e}")
             extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": "N/A"})
 
         # Get top 50 stablecoins
@@ -28,7 +44,8 @@ def fetch_market_data():
                 symbol = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div').text
                 marketcap = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span').text.replace("$", "").replace(",", "").strip()
                 extracted_data.append({"symbol": symbol, "marketcap_usd": marketcap})
-            except:
+            except Exception as e:
+                print(f"Error fetching data for row {i}: {e}")
                 continue
     finally:
         driver.quit()
@@ -47,7 +64,7 @@ def convert_to_csv(data):
 def upload_to_dune(csv_data):
     response = requests.post(
         "https://api.dune.com/api/v1/table/upload/csv",
-        headers={'Content-Type': 'application/json', 'X-DUNE-API-KEY': 'BbxP6Oq2RHQS8nJurQlMfXWsovZNIrro'},
+        headers={'Content-Type': 'application/json', 'X-DUNE-API-KEY': os.getenv("DUNE_API_KEY")},
         data=json.dumps({
             "data": csv_data,
             "description": "Stablecoin Market Capitalization (Total + Top 50)",

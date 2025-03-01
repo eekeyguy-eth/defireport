@@ -1,69 +1,39 @@
 import requests
 import json
 import csv
-import time
 import os
 from io import StringIO
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
-# Function to fetch stablecoin market cap data
+# API Keys
+COINGECKO_API_KEY = "CG-ep7WBgRCGeDria6EeL1jkPot"
+DUNE_API_KEY = "BbxP6Oq2RHQS8nJurQlMfXWsovZNIrro"
+
+# Function to fetch stablecoin market cap data from CoinGecko API
 def fetch_market_data():
-    # Configure Chrome options for headless mode
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")  # Use new headless mode
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
+    url = "https://pro-api.coingecko.com/api/v3/coins/markets"
+    headers = {
+        "accept": "application/json",
+        "x-cg-pro-api-key": COINGECKO_API_KEY
+    }
+    params = {
+        "vs_currency": "usd",
+        "category": "stablecoins",
+        "order": "market_cap_desc",
+        "per_page": 1000,  # Get top 50 stablecoins
+        "page": 1
+    }
 
-    # Initialize Chrome WebDriver
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=chrome_options
-    )
-    extracted_data = []
+    response = requests.get(url, headers=headers, params=params)
+    
+    if response.status_code == 200:
+        data = response.json()
+        extracted_data = [{"symbol": item["symbol"], "marketcap_usd": item["market_cap"]} for item in data]
+        return extracted_data
+    else:
+        print("Error fetching data:", response.status_code, response.text)
+        return []
 
-    try:
-        driver.get("https://www.coingecko.com/en/categories/stablecoins")
-
-        # Wait for the page to load and elements to be present
-        wait = WebDriverWait(driver, 20)  # Wait up to 20 seconds
-
-        # Get total market cap (Updated XPath)
-        try:
-            total_marketcap = wait.until(EC.presence_of_element_located(
-                (By.XPATH, '/html/body/div[3]/main/div/div[3]/div/div/div[1]/div/div[1]/span')
-            )).text
-            extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": total_marketcap.replace("$", "").replace(",", "").strip()})
-        except Exception as e:
-            print(f"Error fetching total market cap: {e}")
-            extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": "N/A"})
-
-        # Get top 50 stablecoins (Updated XPaths)
-        for i in range(1, 51):
-            try:
-                symbol = wait.until(EC.presence_of_element_located(
-                    (By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div')
-                )).text
-                marketcap = wait.until(EC.presence_of_element_located(
-                    (By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span')
-                )).text.replace("$", "").replace(",", "").strip()
-                extracted_data.append({"symbol": symbol, "marketcap_usd": marketcap})
-            except Exception as e:
-                print(f"Error fetching data for row {i}: {e}")
-                continue
-    finally:
-        driver.quit()
-
-    return extracted_data
-
-# Convert to CSV
+# Convert data to CSV format
 def convert_to_csv(data):
     csv_file = StringIO()
     writer = csv.DictWriter(csv_file, fieldnames=["symbol", "marketcap_usd"])
@@ -71,19 +41,22 @@ def convert_to_csv(data):
     writer.writerows(data)
     return csv_file.getvalue()
 
-# Upload to Dune
+# Upload data to Dune
 def upload_to_dune(csv_data):
-    response = requests.post(
-        "https://api.dune.com/api/v1/table/upload/csv",
-        headers={'Content-Type': 'application/json', 'X-DUNE-API-KEY': os.getenv("DUNE_API_KEY")},
-        data=json.dumps({
-            "data": csv_data,
-            "description": "Stablecoin Market Capitalization (Total + Top 50)",
-            "table_name": "stablecoins_marketcap_data",
-            "is_private": False
-        })
-    )
-    print("Upload Response:", response.text)
+    url = "https://api.dune.com/api/v1/table/upload/csv"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-DUNE-API-KEY': DUNE_API_KEY
+    }
+    payload = {
+        "data": csv_data,
+        "description": "Stablecoin Market Capitalization (Top 50)",
+        "table_name": "stablecoins_marketcap_data",
+        "is_private": False
+    }
+
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+    print("Dune Upload Response:", response.text)
 
 # Main function
 def main():

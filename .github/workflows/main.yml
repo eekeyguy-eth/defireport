@@ -1,8 +1,10 @@
-name: Run Python Scripts Every 3 hours
+name: Run Python Scripts at 2 AM Daily
+
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Runs every 3 hours
+    - cron: '0 2 * * *'  # Runs at 2 AM every day
   workflow_dispatch:  # Allows manual triggering
+
 jobs:
   run-scripts:
     runs-on: ubuntu-latest
@@ -19,5 +21,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
       
-      - name: Run marketdata.py
-        run: python marketdata.py
+      - name: Run stablecoins.py
+        run: python stablecoins.py

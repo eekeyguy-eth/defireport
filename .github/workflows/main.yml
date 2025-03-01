@@ -8,6 +8,7 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent infinite hangs
     steps:
       # Step 1: Checkout repository
       - name: Checkout repository
@@ -19,17 +20,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Step 3: Install Chrome and Chromedriver
+      # Step 3: Install system dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm-dev wget unzip xvfb
+
+      # Step 4: Install Chrome and Chromedriver
       - name: Install Chrome and Chromedriver
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: 'latest'
 
-      # Step 4: Install Python dependencies
+      # Step 5: Install Python dependencies
       - name: Install dependencies
         run: |
-          pip install selenium requests
+          pip install selenium requests webdriver-manager
 
-      # Step 5: Run the scraper script
-      - name: Run stablecoins.py
-        run: python stablecoins.py
+      # Step 6: Run the scraper script with Xvfb
+      - name: Run stablecoins.py with Xvfb
+        run: |
+          xvfb-run -a python stablecoins.py
+        env:
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}  # Use GitHub Secrets for API key

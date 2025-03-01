@@ -2,6 +2,7 @@ import requests
 import json
 import csv
 import time
+import os
 from io import StringIO
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -37,8 +38,8 @@ def fetch_market_data():
         # Get total market cap (Updated XPath)
         try:
             total_marketcap = wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="__next"]/div[4]/main/div/div[3]/div/div/div[1]/div/div[1]/span')
-            ).text
+                (By.XPATH, '/html/body/div[3]/main/div/div[3]/div/div/div[1]/div/div[1]/span')
+            )).text
             extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": total_marketcap.replace("$", "").replace(",", "").strip()})
         except Exception as e:
             print(f"Error fetching total market cap: {e}")
@@ -48,10 +49,10 @@ def fetch_market_data():
         for i in range(1, 51):
             try:
                 symbol = wait.until(EC.presence_of_element_located(
-                    (By.XPATH, f'//*[@id="__next"]/div[4]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div')
+                    (By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div')
                 )).text
                 marketcap = wait.until(EC.presence_of_element_located(
-                    (By.XPATH, f'//*[@id="__next"]/div[4]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span')
+                    (By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span')
                 )).text.replace("$", "").replace(",", "").strip()
                 extracted_data.append({"symbol": symbol, "marketcap_usd": marketcap})
             except Exception as e:

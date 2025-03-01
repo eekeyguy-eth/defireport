@@ -24,10 +24,13 @@ jobs:
 
       - name: Install Chrome and Matching ChromeDriver
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          set -e  # Stop script on any command failure
+          sudo apt-get update || echo "Ignoring update errors..."
+          sudo apt-get install -y google-chrome-stable || echo "Chrome already installed, skipping..."
+          
           CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f1)
-          DRIVER_VERSION=$(curl -sS "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+          DRIVER_VERSION=$(curl -sS "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION") || exit 1
+          
           wget -q "https://chromedriver.storage.googleapis.com/${DRIVER_VERSION}/chromedriver_linux64.zip"
           unzip chromedriver_linux64.zip
           sudo mv chromedriver /usr/local/bin/

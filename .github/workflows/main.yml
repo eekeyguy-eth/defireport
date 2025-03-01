@@ -25,10 +25,18 @@ jobs:
         run: |
           pip install requests
 
-      # Step 4: Run the scraper script
+      # Step 4: Run the stablecoins.py script
       - name: Run stablecoins.py
         run: |
           python stablecoins.py
         env:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}  # Use GitHub Secrets for API keys
+
+      # Step 5: Run the market_cap.py script
+      - name: Run market_cap.py
+        run: |
+          python market_cap.py
+        env:
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}

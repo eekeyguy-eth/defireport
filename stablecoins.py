@@ -7,6 +7,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Function to fetch stablecoin market cap data
@@ -28,21 +30,29 @@ def fetch_market_data():
 
     try:
         driver.get("https://www.coingecko.com/en/categories/stablecoins")
-        time.sleep(10)  # Allow more time for the page to load
+
+        # Wait for the page to load and elements to be present
+        wait = WebDriverWait(driver, 20)  # Wait up to 20 seconds
 
         # Get total market cap (Updated XPath)
         try:
-            total_marketcap = driver.find_element(By.XPATH, '/html/body/div[3]/main/div/div[3]/div/div/div[1]/div/div[1]/span').text
+            total_marketcap = wait.until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="__next"]/div[4]/main/div/div[3]/div/div/div[1]/div/div[1]/span')
+            ).text
             extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": total_marketcap.replace("$", "").replace(",", "").strip()})
         except Exception as e:
             print(f"Error fetching total market cap: {e}")
             extracted_data.append({"symbol": "TOTAL_MARKETCAP", "marketcap_usd": "N/A"})
 
-        # Get top 50 stablecoins
+        # Get top 50 stablecoins (Updated XPaths)
         for i in range(1, 51):
             try:
-                symbol = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div').text
-                marketcap = driver.find_element(By.XPATH, f'/html/body/div[3]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span').text.replace("$", "").replace(",", "").strip()
+                symbol = wait.until(EC.presence_of_element_located(
+                    (By.XPATH, f'//*[@id="__next"]/div[4]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[3]/a/div/div')
+                )).text
+                marketcap = wait.until(EC.presence_of_element_located(
+                    (By.XPATH, f'//*[@id="__next"]/div[4]/main/div/div[5]/div[1]/div[3]/table/tbody/tr[{i}]/td[11]/span')
+                )).text.replace("$", "").replace(",", "").strip()
                 extracted_data.append({"symbol": symbol, "marketcap_usd": marketcap})
             except Exception as e:
                 print(f"Error fetching data for row {i}: {e}")
